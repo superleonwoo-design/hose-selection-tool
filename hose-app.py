@@ -7,7 +7,6 @@ st.set_page_config(page_title="工业软管智能选型助手", layout="wide")
 # 加载数据
 @st.cache_data
 def load_data():
-    # 文件名必须与 GitHub 仓库中的文件名完全一致
     file_path = "hose-catalog.xlsx - 橡胶软管.csv"
     try:
         # 使用 utf-8-sig 处理 Excel CSV 的 BOM 头问题
@@ -26,19 +25,15 @@ if df is not None:
     st.sidebar.header("📋 工况参数输入")
 
     # --- 侧边栏交互 ---
-    # 1. 介质搜索（通过名称关键词）
     search_keyword = st.sidebar.text_input("1. 输入介质关键词 (如: 食品, 绝缘, 燃油)", "")
     
-    # 2. 通径筛选
     all_dn = sorted(df['通径'].unique().tolist())
     target_dn = st.sidebar.selectbox("2. 选择通径 (DN)", all_dn, index=all_dn.index('DN25') if 'DN25' in all_dn else 0)
     
-    # 3. 压力和温度
     req_press = st.sidebar.slider("3. 额定工作压力需求 (Bar)", 0, 80, 10)
     req_temp = st.sidebar.slider("4. 最高工作温度需求 (℃)", 0, 200, 80)
 
     # --- 核心筛选逻辑 ---
-    # 注意：这里的列名必须与您 CSV 文件第一行完全一致
     mask = (df['通径'] == target_dn) & \
            (df['工作压力（Bar）'] >= req_press) & \
            (df['最高温度（℃）'] >= req_temp)
@@ -50,7 +45,7 @@ if df is not None:
 
     # --- 结果展示 ---
     if not res.empty:
-        # 智能推荐：按弯曲半径从小到大排序，取第一个
+        # 智能推荐：按弯曲半径从小到大排序
         recommend = res.sort_values(by="弯曲半径（mm）").iloc[0]
         
         st.success(f"✅ 根据您的工况，为您匹配到 {len(res)} 款适用型号")
@@ -60,4 +55,16 @@ if df is not None:
         col1.metric("推荐编号", recommend['编号'])
         col2.metric("最大耐压", f"{recommend['工作压力（Bar）']} Bar")
         col3.metric("最高耐温", f"{recommend['最高温度（℃）']} ℃")
-        col4.metric("弯曲半径", f"{recommend['弯曲半径（mm
+        col4.metric("弯曲半径", f"{recommend['弯曲半径（mm）']} mm")
+
+        st.write("### 📝 所有可选型号明细")
+        show_cols = ['名称', '编号', '通径', '内径(mm)', '外径（mm）', '工作压力（Bar）', '最高温度（℃）', '弯曲半径（mm）']
+        st.dataframe(res[show_cols], use_container_width=True, hide_index=True)
+        
+        st.caption("注：推荐型号是基于满足安全前提下，弯曲半径最小（最易安装）的型号。")
+    else:
+        st.warning("⚠️ 暂无完全匹配的型号。建议：1. 检查关键词是否正确；2. 适当降低压力或温度要求。")
+
+# 侧边栏底部
+st.sidebar.markdown("---")
+st.sidebar.write("✉️ 技术咨询: 您的联系方式")
